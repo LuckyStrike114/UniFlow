@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -215,11 +214,6 @@ fun FunctionalCalendar(taskList: List<Task>, onDateSelected: (LocalDate) -> Unit
             items((1..daysInMonth).toList()) { day ->
                 val date = currentMonth.atDay(day)
                 val color = markedDates[date] ?: Color.Transparent
-                val textColor = if (color != Color.Transparent) {
-                    if (color.luminance() > 0.5f) Color.Black else Color.White
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
 
                 Box(
                     modifier = Modifier
@@ -230,10 +224,8 @@ fun FunctionalCalendar(taskList: List<Task>, onDateSelected: (LocalDate) -> Unit
                         .clickable { onDateSelected(date) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = day.toString(),
-                        color = textColor
-                    )
+                    Text(text = day.toString(),
+                        color = if (color != Color.Transparent) Color.White else Color.Unspecified)
                 }
             }
         }
