@@ -13,6 +13,7 @@ composeBom = "2024.09.00"
 materialIconsExtended = "1.7.8"
 junitJunit = "4.12"
 uiTestJunit4Android = "1.8.2"
+material = "1.11.0"
 
 
 [libraries]
@@ -35,6 +36,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 junit-junit = { group = "junit", name = "junit", version.ref = "junitJunit" }
 androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 
 [plugins]
