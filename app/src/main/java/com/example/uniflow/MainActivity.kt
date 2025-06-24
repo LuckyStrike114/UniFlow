@@ -32,7 +32,8 @@ import androidx.compose.material3.rememberDatePickerState
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import com.example.uniflow.ui.theme.UniFlowTheme
-import java.time.ZoneId
+import com.example.uniflow.data.TaskRepository
+import com.example.uniflow.TasksActivity
 
 
 
@@ -66,12 +67,14 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(username: String) {
-    val taskList = remember { mutableStateListOf<Triple<LocalDate, Color, String>>() }
+    val context = LocalContext.current
+    val repo = remember { TaskRepository.get(context) }
+    val taskList by repo.getAll().collectAsState(initial = emptyList())
     var showDialog by remember { mutableStateOf(false) }
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -86,6 +89,7 @@ fun MainScreen(username: String) {
 
                 NavigationDrawerItem(label = { Text("Obaveze") }, selected = false, onClick = {
                     scope.launch { drawerState.close() }
+                    context.startActivity(Intent(context, TasksActivity::class.java))
                 })
 
                 NavigationDrawerItem(label = { Text("Postavke") }, selected = false, onClick = {
@@ -143,9 +147,13 @@ fun MainScreen(username: String) {
                     FunctionalCalendar(taskList) { selectedDay = it }
                     Spacer(modifier = Modifier.height(16.dp))
                     selectedDay?.let { day ->
-                        Text("Obaveze za ${formatDate(day)}:")
-                        taskList.filter { it.first == day }.forEach { task ->
-                            Text(task.third)
+                        Text("Obaveze za ${day.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}:", fontWeight = FontWeight.Bold)
+                        taskList.filter { it.datum == day }.forEach { task ->
+                            val info = buildString {
+                                append("${task.vrsta}: ${task.naziv}")
+                                task.vrijeme?.let { append(" - $it") }
+                            }
+                            Text(info, color = task.boja)
                         }
                     }
                 }
@@ -153,8 +161,8 @@ fun MainScreen(username: String) {
                 if (showDialog) {
                     AddTaskDialog(
                         onDismiss = { showDialog = false },
-                        onSave = { date, color, details ->
-                            taskList.add(Triple(date, color, details))
+                        onSave = { task ->
+                            scope.launch { repo.add(task) }
                             showDialog = false
                         }
                     )
@@ -166,9 +174,9 @@ fun MainScreen(username: String) {
 
 
 @Composable
-fun FunctionalCalendar(taskList: List<Triple<LocalDate, Color, String>>, onDateSelected: (LocalDate) -> Unit) {
+fun FunctionalCalendar(taskList: List<Task>, onDateSelected: (LocalDate) -> Unit) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
-    val markedDates = taskList.groupBy { it.first }.mapValues { it.value.first().second }
+    val markedDates = taskList.groupBy { it.datum }.mapValues { it.value.first().boja }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -226,13 +234,8 @@ fun FunctionalCalendar(taskList: List<Triple<LocalDate, Color, String>>, onDateS
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> Unit) {
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-    )
+fun AddTaskDialog(onDismiss: () -> Unit, onSave: (Task) -> Unit) {
+    val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedColor by remember { mutableStateOf(Color(0xFF31E981)) }
     var taskType by remember { mutableStateOf("") }
@@ -279,8 +282,15 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> U
         confirmButton = {
             TextButton(onClick = {
                 if (selectedDate != null && taskType.isNotBlank() && taskName.isNotBlank()) {
-                    val details = "$taskType: $taskName ${if (taskTime.isNotBlank()) "- $taskTime" else ""}"
-                    onSave(selectedDate, selectedColor, details)
+                    onSave(
+                        Task(
+                            vrsta = taskType,
+                            naziv = taskName,
+                            boja = selectedColor,
+                            datum = selectedDate,
+                            vrijeme = taskTime.ifBlank { null }
+                        )
+                    )
                 }
             }) {
                 Text("Spremi")
