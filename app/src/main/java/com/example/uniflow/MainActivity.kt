@@ -32,7 +32,6 @@ import androidx.compose.material3.rememberDatePickerState
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import com.example.uniflow.ui.theme.UniFlowTheme
-import java.time.ZoneId
 
 
 
@@ -143,7 +142,7 @@ fun MainScreen(username: String) {
                     FunctionalCalendar(taskList) { selectedDay = it }
                     Spacer(modifier = Modifier.height(16.dp))
                     selectedDay?.let { day ->
-                        Text("Obaveze za ${formatDate(day)}:")
+                        Text("Obaveze za ${day.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}:", fontWeight = FontWeight.Bold)
                         taskList.filter { it.first == day }.forEach { task ->
                             Text(task.third)
                         }
@@ -227,12 +226,7 @@ fun FunctionalCalendar(taskList: List<Triple<LocalDate, Color, String>>, onDateS
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> Unit) {
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-    )
+    val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedColor by remember { mutableStateOf(Color(0xFF31E981)) }
     var taskType by remember { mutableStateOf("") }

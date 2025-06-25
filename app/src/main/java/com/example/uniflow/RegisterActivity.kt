@@ -19,20 +19,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.uniflow.ui.theme.UniFlowTheme
 
-class LoginActivity : ComponentActivity() {
+class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             UniFlowTheme {
-                LoginScreen(
-                    onLoginSuccess = { username ->
-                        val intent = Intent(this, MainActivity::class.java)
-                        intent.putExtra("EXTRA_USERNAME", username)
-                        startActivity(intent)
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        startActivity(Intent(this, LoginActivity::class.java))
                         finish()
-                    },
-                    onNavigateToRegister = {
-                        startActivity(Intent(this, RegisterActivity::class.java))
                     }
                 )
             }
@@ -41,7 +36,7 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Unit) {
+fun RegisterScreen(onRegisterSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -59,8 +54,8 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Un
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                "UniFlow",
-                fontSize = 36.sp,
+                "Registracija",
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF31E981)
             )
@@ -91,24 +86,21 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Un
                 onClick = {
                     if (username.isBlank() || password.isBlank()) {
                         Toast.makeText(context, "Unesite korisničko ime i lozinku", Toast.LENGTH_SHORT).show()
-                    } else if (dbHelper.checkUser(username, password)) {
-                        Toast.makeText(context, "Prijava uspješna", Toast.LENGTH_SHORT).show()
-                        onLoginSuccess(username)
                     } else {
-                        Toast.makeText(context, "Neispravni podaci", Toast.LENGTH_SHORT).show()
+                        val success = dbHelper.registerUser(username, password)
+                        if (success) {
+                            Toast.makeText(context, "Registracija uspješna", Toast.LENGTH_SHORT).show()
+                            onRegisterSuccess()
+                        } else {
+                            Toast.makeText(context, "Korisnik već postoji", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF31E981)),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Prijava", fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(onClick = onNavigateToRegister) {
-                Text("Nemate račun? Registrirajte se", color = Color.Gray)
+                Text("Registriraj se", fontWeight = FontWeight.Bold)
             }
         }
     }

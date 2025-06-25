@@ -22,16 +22,9 @@
         android:layout_marginTop="16dp" />
 
     <Button
-        android:id="@+id/buttonLogin"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Prijava"
-        android:layout_marginTop="24dp" />
-
-    <Button
-        android:id="@+id/buttonGoToRegister"
+        android:id="@+id/buttonRegister"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Registriraj se"
-        android:layout_marginTop="12dp" />
+        android:layout_marginTop="24dp" />
 </LinearLayout>
