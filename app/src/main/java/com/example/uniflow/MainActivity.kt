@@ -37,6 +37,8 @@ import android.content.Intent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
+
 
 
 class MainActivity : ComponentActivity() {
@@ -181,7 +183,8 @@ fun MainScreen(username: String) {
                     FloatingActionButton(
                         onClick = { showDialog = true },
                         containerColor = Color(0xFF31E981),
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        modifier = Modifier.testTag("AddTaskButton")
                     ) {
                         Text("+")
                     }
@@ -282,31 +285,31 @@ fun FunctionalCalendar(taskList: List<Triple<LocalDate, Color, String>>, onDateS
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddTaskDialog(
     onDismiss: () -> Unit,
     onSave: (LocalDate, Color, String, String, String?) -> Unit
-)
-{
-    val datePickerState = rememberDatePickerState()
+) {
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedColor by remember { mutableStateOf(Color(0xFF31E981)) }
     var taskType by remember { mutableStateOf("") }
     var taskName by remember { mutableStateOf("") }
     var taskTime by remember { mutableStateOf("") }
 
+    val todayMillis = System.currentTimeMillis()
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = todayMillis)
+
+    // OVDJE je sada recomposable!
     val selectedDate: LocalDate? = datePickerState.selectedDateMillis?.let {
         java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
     }
 
-    val customColors = remember {
-        listOf(
-            Color.Red, Color.Green, Color.Blue, Color.Yellow,
-            Color.Magenta, Color.Cyan, Color(0xFF31E981), Color.Gray
-        )
-    }
-    @OptIn(ExperimentalLayoutApi::class)
+    val customColors = listOf(
+        Color.Red, Color.Green, Color.Blue, Color.Yellow,
+        Color.Magenta, Color.Cyan, Color(0xFF31E981), Color.Gray
+    )
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Dodaj obavezu") },
@@ -353,7 +356,7 @@ fun AddTaskDialog(
             }) {
                 Text("Spremi")
             }
-        }        ,
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Odustani")
@@ -374,4 +377,5 @@ fun AddTaskDialog(
         }
     }
 }
+
 

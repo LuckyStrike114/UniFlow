@@ -18,7 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.uniflow.ui.theme.UniFlowTheme
-import com.example.uniflow.MainActivity
+import androidx.compose.ui.platform.testTag
 
 
 class LoginActivity : ComponentActivity() {
@@ -72,7 +72,9 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Un
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Korisničko ime") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("UsernameField"),
                 shape = RoundedCornerShape(12.dp)
             )
 
@@ -83,7 +85,9 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Un
                 onValueChange = { password = it },
                 label = { Text("Lozinka") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("PasswordField"),
                 shape = RoundedCornerShape(12.dp)
             )
 
@@ -115,3 +119,4 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit, onNavigateToRegister: () -> Un
         }
     }
 }
+
