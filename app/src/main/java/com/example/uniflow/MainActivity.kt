@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -17,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.uniflow.ui.theme.UniFlowTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -29,26 +32,33 @@ import java.util.*
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.foundation.layout.FlowRow
 import android.content.Intent
-import androidx.compose.ui.platform.LocalContext
-import com.example.uniflow.ui.theme.UniFlowTheme
-
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 
 class MainActivity : ComponentActivity() {
 
     private var isDarkThemeState = mutableStateOf(false)
 
-    override fun onResume() {
-        super.onResume()
-        // Ažurira temu pri povratku
-        val prefs = getSharedPreferences("uniflow_prefs", MODE_PRIVATE)
-        isDarkThemeState.value = prefs.getBoolean("dark_mode", false)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences("uniflow_prefs", MODE_PRIVATE)
+        isDarkThemeState.value = prefs.getBoolean("dark_mode", false)
 
+        val username = intent.getStringExtra("EXTRA_USERNAME") ?: "Student"
+
+        setContent {
+            UniFlowTheme(darkTheme = isDarkThemeState.value) {
+                MainScreen(username = username)
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
         val prefs = getSharedPreferences("uniflow_prefs", MODE_PRIVATE)
         isDarkThemeState.value = prefs.getBoolean("dark_mode", false)
 
@@ -61,16 +71,48 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(username: String) {
+    val context = LocalContext.current
     val taskList = remember { mutableStateListOf<Triple<LocalDate, Color, String>>() }
+    val dbHelper = remember { DatabaseHelper(context) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val tasks = dbHelper.getTasksForUser(username)
+                taskList.clear()
+                taskList.addAll(tasks.map {
+                    Triple(it.datum, it.boja, "${it.vrsta}: ${it.naziv} ${it.vrijeme ?: ""}")
+                })
+            }
+        }
+
+        val lifecycle = lifecycleOwner.lifecycle
+        lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycle.removeObserver(observer)
+        }
+    }
+
     var showDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(showDialog) {
+        if (!showDialog) {
+            val tasks = dbHelper.getTasksForUser(username)
+            taskList.clear()
+            taskList.addAll(tasks.map {
+                Triple(it.datum, it.boja, "${it.vrsta}: ${it.naziv} ${it.vrijeme ?: ""}")
+            })
+        }
+    }
+
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -85,6 +127,9 @@ fun MainScreen(username: String) {
 
                 NavigationDrawerItem(label = { Text("Obaveze") }, selected = false, onClick = {
                     scope.launch { drawerState.close() }
+                    context.startActivity(Intent(context, MyTasksActivity::class.java).apply {
+                        putExtra("EXTRA_USERNAME", username)
+                    })
                 })
 
                 NavigationDrawerItem(label = { Text("Postavke") }, selected = false, onClick = {
@@ -92,8 +137,15 @@ fun MainScreen(username: String) {
                     context.startActivity(Intent(context, SettingsActivity::class.java))
                 })
 
-                NavigationDrawerItem(label = { Text("Pomoć") }, selected = false, onClick = {})
-                NavigationDrawerItem(label = { Text("O nama") }, selected = false, onClick = {})
+                NavigationDrawerItem(label = { Text("Pomoć") }, selected = false, onClick = {
+                    scope.launch { drawerState.close() }
+                    context.startActivity(Intent(context, HelpActivity::class.java))
+                })
+
+                NavigationDrawerItem(label = { Text("O nama") }, selected = false, onClick = {
+                    scope.launch { drawerState.close() }
+                    context.startActivity(Intent(context, AboutActivity::class.java))
+                })
             }
         },
         content = {
@@ -122,7 +174,7 @@ fun MainScreen(username: String) {
                         )
                     )
                 },
-                floatingActionButton = { // ✅ Ovdje je sad ispravno
+                floatingActionButton = {
                     FloatingActionButton(
                         onClick = { showDialog = true },
                         containerColor = Color(0xFF31E981),
@@ -152,8 +204,11 @@ fun MainScreen(username: String) {
                 if (showDialog) {
                     AddTaskDialog(
                         onDismiss = { showDialog = false },
-                        onSave = { date, color, details ->
-                            taskList.add(Triple(date, color, details))
+                        onSave = { date, color, type, name, time ->
+                            val task = Task(type, name, color, date, time)
+                            val dbHelper = DatabaseHelper(context)
+                            dbHelper.addTask(username, task)
+
                             showDialog = false
                         }
                     )
@@ -162,6 +217,7 @@ fun MainScreen(username: String) {
         }
     )
 }
+
 
 
 @Composable
@@ -225,7 +281,11 @@ fun FunctionalCalendar(taskList: List<Triple<LocalDate, Color, String>>, onDateS
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> Unit) {
+fun AddTaskDialog(
+    onDismiss: () -> Unit,
+    onSave: (LocalDate, Color, String, String, String?) -> Unit
+)
+{
     val datePickerState = rememberDatePickerState()
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedColor by remember { mutableStateOf(Color(0xFF31E981)) }
@@ -237,6 +297,13 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> U
         java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
     }
 
+    val customColors = remember {
+        listOf(
+            Color.Red, Color.Green, Color.Blue, Color.Yellow,
+            Color.Magenta, Color.Cyan, Color(0xFF31E981), Color.Gray
+        )
+    }
+    @OptIn(ExperimentalLayoutApi::class)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Dodaj obavezu") },
@@ -255,16 +322,21 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> U
                 OutlinedTextField(taskTime, { taskTime = it }, label = { Text("Vrijeme (opcionalno)") })
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Boja:")
-                Row {
-                    listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow).forEach { color ->
+                Text("Odaberi boju:")
+                FlowRow(modifier = Modifier.fillMaxWidth()) {
+                    customColors.forEach { color ->
                         Box(
                             Modifier
-                                .size(32.dp)
+                                .size(36.dp)
                                 .padding(4.dp)
                                 .clip(MaterialTheme.shapes.small)
                                 .background(color)
                                 .clickable { selectedColor = color }
+                                .border(
+                                    width = if (selectedColor == color) 3.dp else 1.dp,
+                                    color = if (selectedColor == color) Color.Black else Color.LightGray,
+                                    shape = MaterialTheme.shapes.small
+                                )
                         )
                     }
                 }
@@ -273,13 +345,12 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> U
         confirmButton = {
             TextButton(onClick = {
                 if (selectedDate != null && taskType.isNotBlank() && taskName.isNotBlank()) {
-                    val details = "$taskType: $taskName ${if (taskTime.isNotBlank()) "- $taskTime" else ""}"
-                    onSave(selectedDate, selectedColor, details)
+                    onSave(selectedDate, selectedColor, taskType, taskName, taskTime.takeIf { it.isNotBlank() })
                 }
             }) {
                 Text("Spremi")
             }
-        },
+        }        ,
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Odustani")
@@ -300,3 +371,4 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSave: (LocalDate, Color, String) -> U
         }
     }
 }
+
