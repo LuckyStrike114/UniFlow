@@ -54,7 +54,7 @@ fun TaskListScreen(username: String) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Moje obaveze", fontSize = 24.sp, modifier = Modifier.padding(8.dp))
+            Text("Obaveze", fontSize = 30.sp, modifier = Modifier.padding(bottom = 12.dp))
 
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(tasks) { task ->

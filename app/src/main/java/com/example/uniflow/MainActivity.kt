@@ -134,7 +134,10 @@ fun MainScreen(username: String) {
 
                 NavigationDrawerItem(label = { Text("Postavke") }, selected = false, onClick = {
                     scope.launch { drawerState.close() }
-                    context.startActivity(Intent(context, SettingsActivity::class.java))
+                    context.startActivity(Intent(context, SettingsActivity::class.java).apply {
+                        putExtra("EXTRA_USERNAME", username)
+                    })
+
                 })
 
                 NavigationDrawerItem(label = { Text("Pomoć") }, selected = false, onClick = {

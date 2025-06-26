@@ -133,6 +133,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null
         return result > 0
     }
 
+    fun deleteAllTasksForUser(username: String): Boolean {
+        val db = writableDatabase
+        val result = db.delete("tasks", "user = ?", arrayOf(username))
+        db.close()
+        return result > 0
+    }
+
+
     companion object {
         private const val DB_NAME = "uniflow.db"
         private const val DB_VERSION = 3
